@@ -76,7 +76,7 @@ export default {
   margin: 12px;
   padding: .28rem;
   background: #fff;
-  overflow-y: scroll;
+  overflow-y: scroll !important;
   .activelyOne-left {
     width: 100%;
     height: 100%;
@@ -158,6 +158,10 @@ export default {
   ::-webkit-scrollbar {
     display: none;
 }
+.el-upload-list__item-status-label{
+      margin: 0 !important;
+      line-height: initial;
+    }
 }
 
 </style>

@@ -9,6 +9,7 @@ module.exports = {
     //商品模块
     getprojectList: winchaingroupApi + '/good/good/',//商品列表
     establishProject: winchaingroupApi + '/good/good/',// 添加商品
+    getProjectDetail: winchaingroupApi + '/good/good/',//获取商品详情
     //商品分类
     getprojectCategory: winchaingroupApi + '/good/category/',//商品分类列表
     deleteProjectCategory: winchaingroupApi + '/good/category/',//删除商品分类
@@ -37,4 +38,17 @@ module.exports = {
     //修改添加活动
     setActivelyDetailOneData: winchaingroupApi + '/good/activityone/',//修改/添加活动一
     setActivelyDetailTwoData: winchaingroupApi + '/good/activitytwo/',//修改/添加商品二
+    setActivelyDetailThreeData: winchaingroupApi + '/good/activitythree/',//修改/添加商品三
+
+    //获取活动三放生列表
+    getAnimalinitList: winchaingroupApi + '/good/animalinit/',//获取活动三放生列表
+
+    //系统管理
+    setSystemData: winchaingroupApi +  '/user/system/',//创建系统管理
+    getSystemData: winchaingroupApi +  '/user/system/',//系统管理详情
+
+    deleteSystemBannerimage: winchaingroupApi + '/user/systemimage/',//系统管理 banner 删除
+
+    //大屏
+    setSystemVideo: winchaingroupApi + '/user/video/',//上传大屏视频
 }

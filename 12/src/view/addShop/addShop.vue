@@ -1,12 +1,12 @@
 <template>
-  <div class="shoop-box">
+  <div class="shoop-box"  v-loading.fullscreen.lock="isLoading">
     <el-main>
       <div class="view-box">
         <div class="addshopp-box">
           <div class="addshopp-dai">
             <div class="addshopp-tit">
               <p>
-                <img @click="$parent.flag = true" src="../../assets/img/goback.png" alt="">
+                <img @click="$parent.flag = true,$parent.projectID = -1" src="../../assets/img/goback.png" alt="">
                 <span>添加商品</span>
               </p>
             </div>
@@ -49,6 +49,31 @@
             <td>
               <label for="">商品介绍</label>
               <input type="text" placeholder="填写商品介绍" class="actively-site" v-model="project.projectIntroduction">
+            </td>
+            <td class="zhuti-photo" style="height: auto;">
+              <label for="" style="margin-top:.2rem">商品封面</label>
+              <div class="activelyOne-photo">
+                <el-upload
+                  action="string"
+                  ref="upload"
+                  list-type="picture-card"
+                  :http-request="addAttachmentMain"
+                  :on-preview="handlePictureCardPreview"
+                  :on-remove="handleRemoveMain"
+                  :multiple="true"
+                  :file-list="projectMainImgList"
+                  class="photo"
+                >
+                  <i class="el-icon-plus"></i>
+                <p class="zhuyi">注：不得少于4张</p>
+                </el-upload>
+                
+                <el-dialog :visible.sync="dialogVisible">
+                  <img width="100%" :src="dialogImageUrl" alt="">
+                </el-dialog>
+                
+                <p class="footer_text">750*370 png. jpg格式</p>
+              </div>
             </td>
             <td class="zhuti-photo" style="height: auto;">
               <label for="" style="margin-top:.2rem">商品照片</label>
@@ -126,41 +151,16 @@ import projectApp from "./projectApp.vue";
     export default {
       name: "AddSeats",
       components: {projectApp},
+      props:{
+        projectID:{
+          type: Number,
+          required: true
+        }
+      },
       data() {
         return{
-            input3: '',
-            input4: '',
-            input5: '',
-            select: '',
-            pickerOptions2: {
-              shortcuts: [{
-                text: '最近一周',
-                onClick(picker) {
-                  const end = new Date();
-                  const start = new Date();
-                  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-                  picker.$emit('pick', [start, end]);
-                }
-              }, {
-                text: '最近一个月',
-                onClick(picker) {
-                  const end = new Date();
-                  const start = new Date();
-                  start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-                  picker.$emit('pick', [start, end]);
-                }
-              }, {
-                text: '最近三个月',
-                onClick(picker) {
-                  const end = new Date();
-                  const start = new Date();
-                  start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-                  picker.$emit('pick', [start, end]);
-                }
-              }]
-            },
-            value6: '',
-            value7: '',
+            isLoading: false,//加载
+            pickerOptions2: {shortcuts: [] },
             dialogImageUrl: '',
             dialogVisible: false,
             img_list:[],    //上传图片文件
@@ -174,14 +174,19 @@ import projectApp from "./projectApp.vue";
                projectCategoryId: '',//分类ID
                projectPriorityId: '',//优先级ID
                projectStatus:'',//商品状态
+               projectMainImg:'',//商品封面图
             },
             projectCategory: [],//分类列表
             projectPriority:[{'id': '6', 'name': 'A'}, {'id': '5', 'name': 'B'}, {'id': '4','name': 'C'},{'id': '7', 'name': '推荐'}, {'id': '8', 'name': '新品'}],//优先级列表
             projectStatusData: [{'id': '1', 'name': '现货'}, {'id': '2', 'name': '期货'}],//商品状态数据
             file: '',
+            projectMainImgList:[]
           }
       },
       methods: {
+        addAttachmentMain(params){
+          this.project.projectMainImg = params.file
+        },
         addAttachment (params) {
           console.log(params)
           this.baseImg(params.file, true)
@@ -208,6 +213,9 @@ import projectApp from "./projectApp.vue";
         beforeAvatarUpload(file) {
           this.file = file;
           console.log(this.file)
+        },
+        handleRemoveMain(file, fileList){
+           this.project.projectMainImg = ''
         },
         handleRemoveBanner(file, fileList){
           console.log(fileList);
@@ -247,6 +255,41 @@ import projectApp from "./projectApp.vue";
             console.log(err)
           })
         },
+
+        //获取商品详情
+        getProjectDetail(){
+          this.$http.get(this.$conf.env.getProjectDetail + this.projectID).then(res =>{
+            this.isLoading = false
+            console.log(res)
+            if(!res.data) return
+              this.project.projectName = res.data.name ? res.data.name : ''//商品名称
+              this.project.newProjectPrice = res.data.shop_price ? res.data.shop_price : '' //商品现价
+              this.project.oldProjectPrice = res.data.old_price ? res.data.old_price : ''//商品原价
+              this.project.projectIntroduction = res.data.goods_desc ? res.data.goods_desc : ''//商品介绍
+              
+              if(res.data.good_images &&res.data.good_images.length>0){
+                res.data.good_images.forEach(element =>{
+                  element.url = element.image
+                })
+              }
+              this.project.projectBanner = res.data.good_images ? res.data.good_images : []//商品banner图
+              if(res.data.good_details &&res.data.good_details.length>0){
+                res.data.good_details.forEach(element =>{
+                  element.url = element.image
+                })
+              }
+              this.project.projectDetail = res.data.good_details ? res.data.good_details : []//商品详情图
+              this.project.projectMainImg = res.data.front_image ? res.data.front_image : []
+              this.projectMainImgList = res.data.front_image ? [{'url': res.data.front_image}]  : []
+              this.project.projectCategoryId = res.data.category ? res.data.category :''//分类ID
+              this.project.projectPriorityId =  res.data.priority ? res.data.priority :''//优先级ID
+              this.project.projectStatus = res.data.status ? '1': '2'//商品状态
+          }).catch( err =>{
+            this.isLoading = false
+            this.$message.error('网络错误');
+          })
+
+        },
         submitProject(){
           console.log(this.project)
           if(
@@ -258,7 +301,8 @@ import projectApp from "./projectApp.vue";
             this.project.projectDetail.length == 0 ||//商品详情图
             !this.project.projectCategoryId||//分类ID
             !this.project.projectPriorityId||//优先级ID
-            !this.project.projectStatus//商品状态
+            !this.project.projectStatus || //商品状态
+            !this.project.projectMainImg
           ){
             this.$message({
               message: '请完善商品信息',
@@ -271,59 +315,72 @@ import projectApp from "./projectApp.vue";
         },
         submitProjectUplude(){
           let formData = new FormData();
+          var projectBanner = [];
+          var projectDetail = []
           this.project.projectBanner.forEach(element =>{
-              formData.append('good_images', element.image);
-            })
-             this.project.projectDetail.forEach(element =>{
-              formData.append('good_images', element.image);
-            })
-              formData.append('category', this.project.projectCategoryId);
-              formData.append('priority', this.project.projectPriorityId);
-              formData.append('status', this.project.projectStatus == '1' ? true : false);
-              formData.append('name', this.project.projectName);
-              formData.append('shop_price', this.project.newProjectPrice);
-              formData.append('old_price', this.project.oldProjectPrice);
-              // formData.append('shop_price', this.project.newProjectPrice);
-              formData.append('goods_desc', this.project.projectIntroduction);
-
-          // var params ={
-          //     "category": this.project.projectCategoryId, //分类id
-          //     "priority": this.project.projectPriorityId,  //优先级 (4, 'C'), (5, 'B'), (6, 'A'), (7, '推荐'), (8, '新品')
-          //     "status":  this.project.projectStatus == '1' ? true : false, //True现货 Flase期货
-          //     "name": this.project.projectName,  //商品名称
-          //     // "goods_num": null,   库存
-          //     "shop_price": this.project.newProjectPrice, // 售价
-          //     "old_price": this.project.oldProjectPrice,  //原价
-          //     "goods_desc": this.project.projectIntroduction,  //介绍
-          //     // "front_image": {''},   封面图
-          //     "good_images": [{'image': formData.get("image")}], // 商品图
-          //     "good_details": [{'image': formData.get("image")}] //   商品详情图
-          // }
-          console.log(params)
-          this.$http.post(this.$conf.env.establishProject, params).then( res =>{
-            console.log(res)
+            formData.append('good_images', element.image)
+          })
+          this.project.projectDetail.forEach(element =>{
+               formData.append('good_details', element.image)
+          })
+          formData.append('category', this.project.projectCategoryId);//分类id
+          formData.append('priority', this.project.projectPriorityId);//优先级 (4, 'C'), (5, 'B'), (6, 'A'), (7, '推荐'), (8, '新品')
+          formData.append('status', this.project.projectStatus == '1' ? true : false);//True现货 Flase期货
+          formData.append('name', this.project.projectName);//商品名称
+          formData.append('shop_price', this.project.newProjectPrice);// 售价
+          formData.append('old_price', this.project.oldProjectPrice); //原价
+          formData.append('goods_desc', this.project.projectIntroduction);//商品介绍
+          formData.append('front_image',  this.project.projectMainImg)
+          this.projectID == -1 ? this.addEstablishProject(formData) : this.editEstablishProject(formData)
+          
+        },
+        addEstablishProject(formData){
+          this.$http.post(this.$conf.env.establishProject, formData, true).then( res =>{
+            if(res.status == '201'){
+              this.$message({  message: '添加成功', type: 'success'});
+            }else{
+              this.$message.error('添加失败');
+            }
           }).catch( err =>{
-            console.log(err)
+            this.isLoading = false
+            this.$message.error('网络错误');
+          })
+        },
+        editEstablishProject(formData){
+           this.$http.put(this.$conf.env.establishProject + this.projectID, formData, true).then( res =>{
+            if(res.status == '201'){
+              this.$message({  message: '修改成功', type: 'success'});
+            }else{
+              this.$message.error('修改失败');
+            }
+          }).catch( err =>{
+            this.isLoading = false
+            this.$message.error('网络错误');
           })
         }
       },
       mounted(){
         this.getprojectCategory()
+        if(this.projectID != -1){
+          this.isLoading = true
+          this.getProjectDetail()
+        }
       },
       watch:{
         project(){
           console.log(this.project.projectPriorityId)
           console.log(this.priject.projectStatus)
         },
-        // projectStatus(){
-        //   console.log(this.priject.projectStatus)
-        // }
       }
     }
 </script>
 
 <style lang="scss" >
   .shoop-box{
+    .el-upload-list__item-status-label{
+      margin: 0 !important;
+      line-height: initial;
+    }
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -622,6 +679,7 @@ import projectApp from "./projectApp.vue";
           margin-left: .15rem;
         }
       }
+      
     }
     
     /*表单*/

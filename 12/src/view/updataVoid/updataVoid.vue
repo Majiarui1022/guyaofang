@@ -31,39 +31,45 @@
               <tr>
                 <td class="zhuti-photo" style="height: auto;">
                   <div class="words" style="overflow: hidden">
-                    <label for="" style="margin-top:.2rem;float: left;">主题照片</label>
+                    <label for="" style="margin-top:.2rem;float: left;">视频上传</label>
                   </div>
                   <div class="activelyOne-photo">
+                    <video :src='videoImg' v-if="videoImg"  controls="controls"></video>
                     <el-upload
                       action="string"
                       ref="upload"
+                      id="upload"
                       list-type="picture-card"
                       :http-request="addAttachment"
                       :on-preview="handlePictureCardPreview"
                       :on-remove="handleRemove"
                       :multiple="true"
+                      :file-list='img_list'
                       class="photo"
                     >
+                    <!--  -->
+                    <!-- img -->
                       <i class="el-icon-plus"></i>
                     </el-upload>
                     <el-dialog :visible.sync="dialogVisible">
                       <img width="100%" :src="dialogImageUrl" alt="">
                     </el-dialog>
-                    <p>750*370 png. jpg格式</p>
+                    
+                  </div>
+                  <div class='video_list'>
+                    <ul>
+                      <li v-for="item in img_list" :key="item.id">{{item.name}}</li>
+                    </ul>
                   </div>
                 </td>
               </tr>
               </tbody>
             </table>
           </div>
-          <el-button type="primary">确定</el-button>
+          <el-button type="primary" @click="setSystemVideo">确定</el-button>
         </div>
       </div>
     </el-main>
-
-
-
-
   </div>
 </template>
 
@@ -76,23 +82,18 @@
           dialogImageUrl: '',
           dialogVisible: false,
           img_list:[],    //上传图片文件
+          videoImg:'',
+          videoImgFile:''
+
         }
       },
       methods: {
         addAttachment (params) {
-          //console.log(item)
-          let formData = new FormData()
-          formData.append('file', params.file)
-          formData.append('type', 'SKU')
-          formData.append('id', this.$route.params.id)
-          console.log('上传图片接口-参数', params.file)
-          var self = this,
-            file = params.file,
-            fileType = file.type,
-            file_url = self.$refs.upload.uploadFiles[0].url;
-          params.file.url = self.$refs.upload.uploadFiles[0].url;
-          this.img_list.push(params.file)
-          console.log(this.img_list)
+          var windowURL = window.URL || window.webkitURL;
+          console.log(URL.createObjectURL(params.file))
+          this.videoImgFile = params.file
+          this.videoImg = URL.createObjectURL(params.file)
+
         },
         handleRemove(file, fileList) {
           console.log(file, fileList);
@@ -101,7 +102,39 @@
         handlePictureCardPreview(file) {
           this.dialogImageUrl = file.url;
           this.dialogVisible = true;
+        },
+        setSystemVideo(){
+          var params = new FormData()
+          params.append('video', this.videoImgFile)
+          this.$http.post(this.$conf.env.setSystemVideo, params, true).then( res =>{
+            console.log(res)
+            this.videoImg =  res.data.video
+          }).catch( err =>{
+
+          })
+        },
+        getDsystemVideo(){
+           this.$http.get(this.$conf.env.setSystemVideo).then( res =>{
+            console.log(res)
+            res.data.forEach( (element, index) =>{
+              element.url = element.video
+              console.log(element.video.lastIndexOf('.'))
+               if(element.video.lastIndexOf('.') == '.mp4'){
+                 console.log(index)
+               }
+            })
+            
+            this.img_list = res.data
+            
+          }).catch( err =>{
+
+          })
         }
+      },
+      mounted(){
+        this.getDsystemVideo()
+        console.log('asdasd.masdi'.lastIndexOf('.'))
+        // console.log(document.getElementById('upload').getElementsByClassName('el-upload-list__item is-success').children('img'))
       }
     }
 </script>
@@ -113,8 +146,26 @@
     flex-direction: column;
     width: 100%;
     height:100%;
-
-
+    .el-upload-list__item-status-label{
+      margin: 0 !important;
+      line-height: initial;
+    }
+    /* 视频部分*/
+    .video_list{
+        width: .8em;
+        height: .8rem;
+        border: 1px solid #ccc;
+        /* float: left; */
+        margin: -.1rem 0 0 .1rem;
+        ul{
+          display: block;
+          font-size: .05rem;
+          li{
+            width: auto !important;
+            height: auto !important;
+          }
+        }
+      }
     /*头部*/
     .view-box{
       width: 100%;
@@ -312,6 +363,7 @@
           margin-left: .15rem;
         }
       }
+      
     }
 
     /*表单*/

@@ -28,19 +28,8 @@
             </td>
             <td class="section-big">
               <label for style="display: block">放生选择</label>
-              <el-checkbox-group v-model="checkList">
-                <el-checkbox label="复选框 A"></el-checkbox>
-                <el-checkbox label="复选框 B"></el-checkbox>
-                <el-checkbox label="复选框 C"></el-checkbox>
-                <el-checkbox label="复选框 D"></el-checkbox>
-                <el-checkbox label="复选框 E"></el-checkbox>
-                <el-checkbox label="复选框 F"></el-checkbox>
-                <el-checkbox label="复选框 G"></el-checkbox>
-                <el-checkbox label="复选框 H"></el-checkbox>
-                <el-checkbox label="复选框 I"></el-checkbox>
-                <el-checkbox label="复选框 J"></el-checkbox>
-                <el-checkbox label="复选框 K"></el-checkbox>
-                <el-checkbox label="复选框 L"></el-checkbox>
+              <el-checkbox-group v-model="actively.animalinitListId" >
+                <el-checkbox   v-for="item in animalinitList" :key="item.id"   :label="item.id">{{item.name}}</el-checkbox>
               </el-checkbox-group>
             </td>
 
@@ -55,6 +44,7 @@
                   :on-preview="handlePictureCardPreview"
                   :on-remove="handleRemove"
                   :multiple="true"
+                  :file-list='activelyBannerList'
                   class="photo"
                 >
                   <i class="el-icon-plus"></i>
@@ -137,6 +127,7 @@ export default {
       required: true
     }
   },
+  inject:['reload'],
   data() {
     return {
       pickerOptions2:{
@@ -156,9 +147,12 @@ export default {
         activelyCity: "", //活动地址
         activelyBanner: '', //活动主图
         activelyProjectImg: [], //活动商品图
-        activelyPosterImg: [] //活动海报
+        activelyPosterImg: [], //活动海报
+        animalinitListId:[],//放生ID
       },
-      isLoading: false 
+      isLoading: false ,
+      animalinitList: [],//放生列表
+      activelyBannerList:[]
     };
   },
 
@@ -166,7 +160,7 @@ export default {
     /**@图片添加 */
     //添加主题照片
     addAttachment(params){
-       this.actively.activelyBanner = params.file;
+         this.actively.activelyBanner = params.file;
     },
 
     //添加商品照片
@@ -201,6 +195,7 @@ export default {
     //删除主题照片
     handleRemove() {
       this.activelyBanner = ''
+      this.activelyBannerList = []
     },
 
     //删除商品你照片
@@ -220,6 +215,18 @@ export default {
       this.dialogVisible = true;
     },
 
+
+    /**@获取放生列表 */
+    getAnimalinitList(){
+      this.$http.get(this.$conf.env.getAnimalinitList).then(res =>{
+        console.log(res)
+        if(res.status == '200'){
+          this.animalinitList = res.data
+        }
+      }).catch(err =>{
+         this.$message.error('网络错误');
+      })
+    },
     /**@活动三详情接口 */
     getActivelyDetail(){
       this.$http.get(this.$conf.env.getActivelyThreeDetail + this.activelyId).then(res =>{
@@ -232,7 +239,18 @@ export default {
             this.actively.activelyOldTime = res.data.end_time ? res.data.end_time.split('T')[0] : ''; //活动时间
             this.actively.activelyCity = res.data.activity ? res.data.activity : ''; //活动地址
             this.actively.activelyBanner = res.data.front_image ? res.data.front_image  : ''; //活动主图
-            this.actively.activelyProjectImg = res.data.good_images  ? res.data.good_images : []; //活动商品图
+            this.activelyBannerList = res.data.front_image ? [{'url': res.data.front_image}]  : []; //活动主图
+            if(res.data.good_images &&res.data.good_images.length>0){
+              res.data.good_images.forEach(element =>{
+                element.url = element.image
+              })
+            }
+            this.actively.activelyProjectImg = res.data.good_images  ? res.data.good_images : []; //活动商品图            
+            if(res.data.good_details &&res.data.good_details.length>0){
+              res.data.good_details.forEach(element =>{
+                element.url = element.image
+              })
+            }
             this.actively.activelyPosterImg = res.data.good_details ? res.data.good_details : [] //活动海报
           }
         }
@@ -244,11 +262,74 @@ export default {
     },
 
     submit(){
-      
-    }
-    
+       if(!this.VerificationData()) return
+       var params = new FormData()
+         this.actively.activelyProjectImg.forEach(element =>{
+            params.append('good_images', element.image);
+        })
+        this.actively.activelyPosterImg.forEach(element =>{
+            params.append('good_details', element.image);//商品详情图
+        })
+       params.append("name", this.actively.activelyName)
+       params.append("start_time", this.actively.activelyNewTime  + 'T00:00')
+       params.append("end_time", this.actively.activelyOldTime  + 'T00:00')
+       params.append("activity", this.actively.activelyCity)
+       params.append("front_image", this.activelyBannerList[0] ?this.activelyBannerList[0].url: this.actively.activelyBanner)
+       params.append("animals", this.actively.animalinitListId)
+       this.isLoading = true
+      this.activelyId == -1 ? this.AddtoActivelyThreeData(params) : this.UpdataActivelyThreeData(params)
+    },
+
+    //数据校验
+     VerificationData(){
+       if(
+          !this.actively.activelyName ||  //活动名称
+          !this.actively.activelyNewTime || //开始时 //活动时间开始
+          !this.actively.activelyOldTime || //结束时//活动结束时间
+          !this.actively.activelyTime || //活动时间
+          !this.actively.activelyCity ||  //活动地址
+          !this.actively.activelyBanner ||  //活动主图
+          this.actively.activelyProjectImg.length == 0 ||  //活动商品图
+          this.actively.activelyPosterImg.length == 0 //活动海报
+       ){
+          this.$message({ message: '请完善您的信息', type: 'warning'});
+          return false
+       }else{
+          return true
+       }
+     },
+
+      //添加活动三
+     AddtoActivelyThreeData(params){
+        this.$http.post(this.$conf.env.setActivelyDetailThreeData, params, true).then( res =>{
+            this.isLoading = false
+            if(res.status == '201'){
+              this.$message({  message: '添加成功', type: 'success'});
+              this.reload()
+            }
+          }).catch( err =>{
+             this.isLoading = false
+            this.$message.error('网络错误');
+
+          })
+     },
+
+     //修改活动三
+     UpdataActivelyThreeData(params){
+       this.$http.put(this.$conf.env.setActivelyDetailThreeData + this.activelyId, params, true).then(res =>{
+            this.isLoading = false
+          if(res.status == '200'){
+              this.$message({ message: '添加成功', type: 'success'});
+          }
+        }).catch( err =>{
+            this.isLoading = false
+          this.$message.error('网络错误');
+        })
+     }
+
   },
   mounted(){
+    this.getAnimalinitList()
     if(this.activelyId != -1){
        this.isLoading = true
       this.getActivelyDetail()

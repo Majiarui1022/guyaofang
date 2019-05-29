@@ -24,8 +24,8 @@
       name: "login",
       data(){
         return{
-          "username": 'hllyzms',//账户名
-          "password": 'asd123456',//用户密码
+          "username": '',//账户名
+          "password": '',//用户密码
         }
       },
       methods:{
@@ -42,18 +42,18 @@
                   message: '登陆成功',
                   type: 'success'
                 });
-                localStorage.setItem('jp_token', res.data.token)
+                localStorage.setItem('jp_token', res.data.token) 
                 setTimeout( () =>{
                   this.$router.push({name:"ShoppManage"})
                 }, 1000)
-
+                
               }else{
                 this.$message({
                   message: res.data.msg,
                   type: 'warning'
                 });
               }
-
+               
             }
           }).catch( err =>{
             this.$message({

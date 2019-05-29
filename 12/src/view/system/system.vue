@@ -1,5 +1,5 @@
 <template>
-  <div class="shoop-box">
+  <div class="shoop-box"  v-loading.fullscreen.lock="isLoading">
     <el-header>
       <div class="header">
         <div class="search-box">
@@ -38,10 +38,11 @@
                       action="string"
                       ref="upload"
                       list-type="picture-card"
-                      :http-request="addAttachment"
+                      :http-request="addAttachmentBanner"
                       :on-preview="handlePictureCardPreview"
-                      :on-remove="handleRemove"
+                      :on-remove="handleRemoveBanner"
                       :multiple="true"
+                      :file-list="systemBannerList"
                       class="photo"
                     >
                       <i class="el-icon-plus"></i>
@@ -61,10 +62,13 @@
                       action="string"
                       ref="upload"
                       list-type="picture-card"
-                      :http-request="addAttachment"
+                      :http-request="addAttachmentLogo"
                       :on-preview="handlePictureCardPreview"
-                      :on-remove="handleRemove"
+                      :on-remove="handleRemoveLogo"
+                      :file-list='systemLogoList'
                       :multiple="true"
+                      :limit = 1
+                      :on-exceed = 'onExceed'
                       class="photo"
                     >
                       <i class="el-icon-plus"></i>
@@ -84,9 +88,12 @@
                       action="string"
                       ref="upload"
                       list-type="picture-card"
-                      :http-request="addAttachment"
+                      :http-request="addAttachmentActivity"
                       :on-preview="handlePictureCardPreview"
-                      :on-remove="handleRemove"
+                      :on-remove="handleRemoveActively"
+                      :file-list='systerActivelyList'
+                      :limit = 1
+                      :on-exceed = 'onExceed'
                       :multiple="true"
                       class="photo"
                     >
@@ -107,9 +114,12 @@
                       action="string"
                       ref="upload"
                       list-type="picture-card"
-                      :http-request="addAttachment"
+                      :http-request="addAttachmentRecommend"
                       :on-preview="handlePictureCardPreview"
-                      :on-remove="handleRemove"
+                      :on-remove="handleRemoveRecommend"
+                      :file-list='systemRecommendList'
+                      :limit = 1
+                      :on-exceed = 'onExceed'
                       :multiple="true"
                       class="photo"
                     >
@@ -130,9 +140,12 @@
                       action="string"
                       ref="upload"
                       list-type="picture-card"
-                      :http-request="addAttachment"
+                      :http-request="addAttachmentSeat"
                       :on-preview="handlePictureCardPreview"
-                      :on-remove="handleRemove"
+                      :on-remove="handleRemoveSeat"
+                      :file-list= 'systemSeatList'
+                      :limit = 1
+                      :on-exceed = 'onExceed'
                       :multiple="true"
                       class="photo"
                     >
@@ -148,7 +161,7 @@
               </tbody>
             </table>
           </div>
-          <el-button type="primary">确定</el-button>
+          <el-button type="primary" @click="submit">确定</el-button>
         </div>
       </div>
     </el-main>
@@ -162,43 +175,257 @@
 <script>
     export default {
         name: "system",
+      inject:['reload'],
       data() {
         return {
           dialogImageUrl: '',
           dialogVisible: false,
           img_list:[],    //上传图片文件
+          systemBannerList:[],//banner
+          systemLogoList: [],//logo
+          systemLogo: '',
+          systerActivelyList: [],//活动底图
+          systerActively: '',
+          systemRecommendList: [],//推荐底图
+          systemRecommend: '',
+          systemSeatList: [],//推荐席位
+          systemSeat: '',
+          isLoading: true ,
+          SystemID: '',
+          // formData: new FormData()
         }
       },
       methods: {
-        addAttachment (params) {
-          //console.log(item)
-          let formData = new FormData()
-          formData.append('file', params.file)
-          formData.append('type', 'SKU')
-          formData.append('id', this.$route.params.id)
-          console.log('上传图片接口-参数', params.file)
-          var self = this,
-            file = params.file,
-            fileType = file.type,
-            file_url = self.$refs.upload.uploadFiles[0].url;
-          params.file.url = self.$refs.upload.uploadFiles[0].url;
-          this.img_list.push(params.file)
-          console.log(this.img_list)
+        /**@图片添加 */
+
+        //首页banner
+        addAttachmentBanner(params, file, fileList) {
+          this.baseImg(params.file)
         },
-        handleRemove(file, fileList) {
-          console.log(file, fileList);
-          console.log('发送axios请求')
+        //添加logo
+        addAttachmentLogo(params){
+          this.systemLogo = params.file
         },
+
+        //添加活动底图
+        addAttachmentActivity(params){
+          this.systerActively= params.file
+        },
+
+        //添加推荐底图
+        addAttachmentRecommend(params){
+          this.systemRecommend = params.file
+        },
+
+        //添加席位
+        addAttachmentSeat(params){
+          this.systemSeat = params.file
+        },
+
+
+        /**@图片格式转换 */
+        //图片转换Base64格式
+        baseImg(files) {
+
+          let reader = new FileReader();
+          let imgFile;
+          reader.readAsDataURL(files);
+          reader.onload = e => {
+            imgFile = e.target.result;
+            let arr = imgFile.split(",");
+            let obj = {};
+            obj.url = "data:image/jpeg;base64," + arr[1];
+            obj.image = files;
+            var arrey = []
+           this.systemBannerList.push(obj)
+          //  return arrey
+          };
+        },
+        
+        /**@图片删除 */
+
+        //banner删除
+        handleRemoveBanner(file, fileList) {
+          console.log(file)
+          if(file.id){
+            this.isLoading = true
+            this.deleteSystemBannerimage(file.id)
+          }else{
+            this.systemBannerList = fileList
+            this.$message({  message: '删除成功', type: 'success'});
+          }
+        },
+        //接口删除
+        deleteSystemBannerimage(ID){
+          this.$http.delete(this.$conf.env.deleteSystemBannerimage + ID).then( res =>{
+            this.isLoading = false
+            console.log(res)
+            if(res.status == '200'){
+              this.$message({  message: '删除成功', type: 'success'});
+              this.getSystemData()
+            }
+          }).catch( err =>{
+            this.isLoading = false
+            this.$message.error('网络错误');
+          })
+        },
+
+        //删除logo
+        handleRemoveLogo(file, fileList){
+          this.systemLogo = ''
+          this.systemLogoList = []
+          this.$message({  message: '删除成功', type: 'success'});
+        },
+
+        //删除活动底图
+        handleRemoveActively(){
+          this.systerActivelyList = []
+          this.systerActively = ''
+          this.$message({  message: '删除成功', type: 'success'});
+
+        },
+        //删除推荐底图
+        handleRemoveRecommend(){
+          this.systemRecommendList = []
+          this.systemRecommend = ''
+          this.$message({  message: '删除成功', type: 'success'});
+        },
+        //删除席位底图
+        handleRemoveSeat(){
+          this.systemSeatList = []
+          this.systemSeat = ''
+          this.$message({  message: '删除成功', type: 'success'});
+        },
+        
+        
+        /**@图片预览 */
         handlePictureCardPreview(file) {
           this.dialogImageUrl = file.url;
           this.dialogVisible = true;
-        }
+        },
+
+        /**@文件超出个数限制 */
+        onExceed(){
+           this.$message.error('最多添加一张图片');
+        },
+
+        //创建系统管理
+        submit(){
+          if(!this.VerificationData()) return
+          var formData = new FormData()
+          console.log(this.systemBannerList)
+          this.systemLogo.type ? formData.append('logo', this.systemLogo) : formData.append('logo', '')
+          this.systerActively.type ? formData.append('activity_img', this.systerActively) : formData.append('activity_img', '')
+          this.systemRecommend.type ? formData.append('recommend_img', this.systemRecommend) : formData.append('recommend_img', '')
+          this.systemSeat.type ? formData.append('seat_img', this.systemSeat) : formData.append('seat_img', '')
+
+          this.systemBannerList.forEach( Element =>{
+            if(!Element.id){
+               formData.append('sys_images', Element.image)
+            }
+          })
+          this.isLoading = true
+          this.SystemID ? this.upDataSetSystemData(formData) : this.addsetSystemData(formData) 
+          
+        },
+        
+        addsetSystemData(formData){
+          this.$http.post(this.$conf.env.setSystemData, formData, true).then( res =>{
+            this.isLoading = false
+            console.log(res)
+            if(res.status == '201'){
+              this.$message({  message: '添加成功', type: 'success'});
+              this.reload()
+            }
+          }).catch( err =>{
+            console.log(err)
+            this.isLoading = false
+            this.$message.error('网络错误');
+          })
+        },
+
+        upDataSetSystemData(formData){
+          this.$http.put(this.$conf.env.setSystemData + this.SystemID + '/', formData, true).then( res =>{
+            this.isLoading = false
+            console.log(res)
+            if(res.status == '200'){
+              this.$message({  message: '修改成功', type: 'success'});
+              this.reload()
+            }
+          }).catch( err =>{
+            console.log(err)
+            this.isLoading = false
+            this.$message.error('网络错误');
+          })
+        },
+
+        //数据校验
+        VerificationData(){
+          if(
+              !this.systemLogo ||  
+              !this.systerActively || 
+              !this.systemRecommend || 
+              !this.systemSeat || 
+              this.systemBannerList.length == 0 
+          ){
+              this.$message({ message: '请完善您的信息', type: 'warning'});
+              return false
+          }else{
+            
+              return true
+          }
+        },
+        
+        
+        //获取系统详情
+        getSystemData(){
+          this.$http.get(this.$conf.env.getSystemData).then(res =>{
+           this.isLoading = false
+            if(res.status == '200'){
+              if(!res.data) return
+              if(res.data.id){this.SystemID = res.data.id}
+               this.systemLogo = res.data.logo ? res.data.logo:''
+              this.systemLogoList = res.data.logo ? [{'url': res.data.logo}] : []
+              this.systerActively =  res.data.activity_img ?  res.data.activity_img : ''
+              this.systerActivelyList = res.data.activity_img ? [{'url': res.data.activity_img}] : []
+              this.systemRecommend = res.data.recommend_img ? res.data.recommend_img : ''
+              this.systemRecommendList = res.data.recommend_img ? [{'url':res.data.recommend_img}]: []
+              this.systemSeat = res.data.seat_img ? res.data.seat_img : ''
+              this.systemSeatList = res.data.seat_img ? [{'url': res.data.seat_img}]: []
+               if(res.data.sys_images &&res.data.sys_images.length>0){
+                res.data.sys_images.forEach(element =>{
+                  element.url = element.image
+                })
+              }
+              this.systemBannerList = res.data.sys_images ? res.data.sys_images: []
+            }
+          }).catch( err =>{
+            this.isLoading = false
+            console.log(err)
+          })
+        },
+        
+        
+
+      },
+      mounted(){
+        this.getSystemData()
       }
     }
 </script>
 
 
 <style lang="scss" >
+.el-date-editor{
+    margin: 0 !important;
+}
+.el-date-editor{
+    height:auto !important;
+}
+.el-upload-list__item-status-label{
+      margin: 0 !important;
+      line-height: initial;
+    }
   .shoop-box{
     display: flex;
     flex-direction: column;

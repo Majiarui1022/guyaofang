@@ -1,5 +1,5 @@
 <template>
-    <div class="bigbox" v-show="flag">
+    <div class="addbigbox" v-if="flag" v-loading.fullscreen.lock="isLoading">
         <div class="box"></div>
         <div class="model">
             <div class="header">
@@ -11,7 +11,7 @@
                 <tr>
                 <td>
                     <label for="">分类名称</label>
-                    <input type="text" placeholder="填写分类名称" class="actively-site">
+                    <input type="text" placeholder="填写分类名称" class="actively-site" v-model="activelyClassifityName">
                 </td>
                 <td class="zhuti-photo" style="height: auto;">
                     <label for="" style="margin-top:.2rem">选中图片</label>
@@ -20,10 +20,12 @@
                         action="string"
                         ref="upload"
                         list-type="picture-card"
-                        :http-request="addAttachment"
+                        :http-request="addAttachmentActive"
                         :on-preview="handlePictureCardPreview"
                         :on-remove="handleRemove"
                         :multiple="true"
+                        :limit = 1
+                        :on-exceed = 'onExceed'
                         class="photo"
                     >
                         <i class="el-icon-plus"></i>
@@ -45,6 +47,8 @@
                         :on-preview="handlePictureCardPreview"
                         :on-remove="handleRemove"
                         :multiple="true"
+                        :limit = 1
+                        :on-exceed = 'onExceed'
                         class="photo"
                     >
                         <i class="el-icon-plus"></i>
@@ -66,36 +70,13 @@
 <script>
 export default {
     name: 'bianji',
+    inject:['reload'],
     data(){
       return{
         flag: true,
         
         pickerOptions2: {
-          shortcuts: [{
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            }
-          }, {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            }
-          }, {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            }
-          }]
+          shortcuts: []
         },
         value6: '',
         value7: '',
@@ -103,6 +84,12 @@ export default {
         dialogVisible: false,
         img_list:[],    //上传图片文件
         radioa:'2',     //状态
+        activelyClassifityName: '',//分类名称
+        addAttachmentActiveImgList: [],
+        addAttachmentActiveImg: '',
+        addAttachmentImgList: [],
+        addAttachmentImg: '',
+        isLoading : false
       }
     },
     props: {
@@ -113,24 +100,19 @@ export default {
         },
     },
     methods: {
+        addAttachmentActive(params){
+            this.addAttachmentActiveImg = params.file
+        },
       addAttachment (params) {
-        //console.log(item)
-        let formData = new FormData()
-        formData.append('file', params.file)
-        formData.append('type', 'SKU')
-        formData.append('id', this.$route.params.id)
-        console.log('上传图片接口-参数', params.file)
-        var self = this,
-          file = params.file,
-          fileType = file.type,
-          file_url = self.$refs.upload.uploadFiles[0].url;
-        params.file.url = self.$refs.upload.uploadFiles[0].url;
-        this.img_list.push(params.file)
-        console.log(this.img_list)
+        this.addAttachmentImg = params.file
       },
-      handleRemove(file, fileList) {
-        console.log(file, fileList);
-        console.log('发送axios请求')
+      handleRemoveActive(){
+        this.addAttachmentActiveImgList = []
+        this.addAttachmentActiveImg = ''
+      },
+      handleRemove() {
+        this.addAttachmentImg = ''
+        this.addAttachmentImgList = []
       },
       handlePictureCardPreview(file) {
         this.dialogImageUrl = file.url;
@@ -139,22 +121,37 @@ export default {
       close(){
           this.flag = false
           this.$emit("change",false)
+          
       },
+        /**@文件超出个数限制 */
+        onExceed(){
+            this.$message.error('最多添加一张图片');
+        },
       addProjectCategory(){
-          var params = {
-              
-          }
-        this.$http.post(this.$conf.env.addProjectCategory, params).then( res =>{
+          var params = new FormData()
+          params.append('name', this.activelyClassifityName)
+          params.append('click_img', this.addAttachmentActiveImg)
+          params.append('img',  this.addAttachmentImg)
+          this.isLoading = true
+        this.$http.post(this.$conf.env.addProjectCategory, params, true).then( res =>{
+            this.isLoading = false
+            if(res.status == '201'){
+                this.close()
+                this.$bus.$emit('getprojectCategoryclose', 'data')
+               this.$message({  message: '添加成功', type: 'success'}); 
+            }
             console.log(res)
+            
         }).catch(err =>{
+             this.isLoading = false
             console.log(err)
         })
       }
     }
 }
 </script>
-<style lang="scss" scoped>
-    .bigbox{
+<style lang="scss" >
+    .addbigbox{
         z-index: 13;
         position: fixed;
         width: 200%;
@@ -329,3 +326,4 @@ export default {
         }
     }
 </style>
+

@@ -42,6 +42,7 @@
               <label for="" style="margin-top:.2rem">主题照片</label>
               <div class="activelyOne-photo">
                 <el-upload
+
                   action="https://jsonplaceholder.typicode.com/posts/"
                   ref="upload"
                   list-type="picture-card"
@@ -49,12 +50,15 @@
                   :on-preview="handlePictureCardPreview"
                   :on-remove="handleRemove"
                   :multiple="true"
-                  :before-upload="beforeAvatarUploadA"
+                  :before-upload="beforeAvatarUpload"
+                  :limit = 1
+                  :on-exceed = 'onExceed'
+                  :file-list='activelyMainImgList'
                   class="photo"
                 >
-                  <i class="el-icon-plus"></i>
+                  <i class="el-icon-plus" v-show="!actively.activelyMainImg"></i>
                 </el-upload>
-                <el-dialog :visible.sync="dialogVisible">
+                <el-dialog :visible.sync="dialogVisible" >
                   <img width="100%" :src="dialogImageUrl" alt="">
                 </el-dialog>
                 <p>750*370 png. jpg格式</p>
@@ -133,10 +137,7 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
               activelyNewTime: '开始时间',//活动开始时间
             },
             isLoading: false,//加载
-
-
-            aa:[],
-            bb:[]
+            activelyMainImgList:[]
           }
       },
 
@@ -152,43 +153,7 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
         //添加海报照片
         addAttachmentPoster(params){
            this.baseImg(params.file, true)
-           console.log(params.file)
-           var fileArray = new Array();
-           fileArray.push(params.file)
-          //  var data = new FormData()
-          //  data.append('image', params.file)
-          //  console.log(data.get('image'))
-           var fd = new FormData();
-            var fileList= fileArray;
-            for (var i = 0; i < fileArray.length; i++) {
-            fd.append('file[]', fileList[i]);
-            }
-            console.log(fd.get('file[]'))
         },
-
-        beforeAvatarUploadA(file) {
-          this.file = file;
-
-
-
-          this.aa.push(file)
-          console.log(this.aa)
-
-
-          const isJPG = file.type === 'image/jpeg';
-          const isLt2M = file.size / 1024 / 1024 < 2;
-          this.param = new FormData();
-          this.param.append('file', file, file.name);
-          console.log(this.param)
-          if (!isJPG) {
-            this.$message.error('上传头像图片只能是 JPG 格式!');
-          }
-          if (!isLt2M) {
-            this.$message.error('上传头像图片大小不能超过 2MB!');
-          }
-          return isJPG && isLt2M;
-        },
-
 
 
          /**@图片格式转换 */
@@ -221,19 +186,14 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
         },
 
         /**@图片格式判断 */
-        beforeAvatarUpload(file){
-
-
-          this.bb.push(file)
-          console.log(this.bb)
-
-
-          const isJPG = file.type === "image/jpeg" || "image/png" ;
-
-          if (!isJPG) {
-            this.$message.error("上传头像图片只能是 JPG 格式!");
-          }
-          return isJPG ;
+        beforeAvatarUpload(file){ 
+          
+          // const isJPG = file.type === "image/jpeg"
+          // const isPng = file.type === "image/png"
+          // if (!isJPG && !isPng) {
+          //   this.$message.error("上传头像图片只能是 JPG或PNG格式!");
+          // }
+          // return isJPG  && isPng ;
         },
         /**@图片预览 */
         handlePictureCardPreview(file) {
@@ -241,6 +201,10 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
           this.dialogVisible = true;
         },
 
+        /**@文件超出个数限制 */
+        onExceed(){
+           this.$message.error('最多添加一张图片');
+        },
         /**@活动详情1加载 */
         getActivelyDetail(){
           this.$http.get(this.$conf.env.getActivelyOneDetail + this.activelyId).then(res =>{
@@ -254,8 +218,14 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
                 this.actively.activelyCity = res.data.activity ? res.data.activity : '';//活动地址
                 this.actively.activelyPeopleNumber = res.data.goods_num ? res.data.goods_num : 0;//活动人数
                 this.actively.activelyLinkPhone = res.data.principal_telephone ? res.data.principal_telephone : '';//联系人手机号
+                if(res.data.good_details &&res.data.good_details.length>0){
+                  res.data.good_details.forEach(element =>{
+                    element.url = element.image
+                  })
+                }
                 this.actively.activelyPosterImg =  res.data.good_details ? res.data.good_details : [];//活动海报
                 this.actively.activelyMainImg = res.data.front_image ? res.data.front_image : ''
+                this.activelyMainImgList = res.data.front_image ? [{'url': res.data.front_image}]  : []; //活动主图
             }
           }).catch( err =>{
             this.isLoading = false
@@ -267,28 +237,19 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
 
         submit(){
           if(!this.VerificationData()) return
-           var params = new FormData()
-          // params.append('image', this.actively.activelyMainImg)
-          // params.append('front_image', this.aa)
-          // params.append('good_details', this.bb)
-
-          // for(var i in this.aa){
-            params.append('front_image[]', this.aa)
-          // }
-          // for(var j in this.aa){
-            params.append('front_image[]', this.bb)
-          // }
-
+          var params = new FormData()
+           this.actively.activelyPosterImg.forEach( element =>{
+             params.append('good_details', element.image);
+           })
+          params.append('front_image', this.actively.activelyMainImg)
           params.append('name', this.actively.activelyName)
           params.append('start_time', this.actively.activelyNewTime + 'T00:00')
-          params.append('end_time', this.actively.activelyOldTime + 'T00:00',)
-          params.append('activity', this.actively.activelyCity,)
-          params.append('goods_num', this.actively.activelyPeopleNumber,)
-          params.append('principal_telephone', this.actively.activelyLinkPhone,)
-
-
-
+          params.append('end_time', this.actively.activelyOldTime + 'T00:00')
+          params.append('activity', this.actively.activelyCity)
+          params.append('goods_num', this.actively.activelyPeopleNumber)
+          params.append('principal_telephone', this.actively.activelyLinkPhone)
           this.isLoading = true
+          console.log(params)
           this.activelyId == -1 ? this.AddtoActivelyOneData(params) : this.UpdataActivelyOneData(params)
         },
 
@@ -319,10 +280,12 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
         //活动一提交
         AddtoActivelyOneData(params){
           console.log(params)
-          this.$http.post(this.$conf.env.setActivelyDetailOneData, params).then( res =>{
+          this.$http.post(this.$conf.env.setActivelyDetailOneData, params, true).then( res =>{
             this.isLoading = false
-            if(res.status == '200'){
+            if(res.status == '201'){
               this.$message({  message: '添加成功', type: 'success'});
+            }else{
+               this.$message({ message: '添加失败', type: 'success'});
             }
           }).catch( err =>{
              this.isLoading = false
@@ -331,11 +294,13 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
         },
 
         //活动一修改
-        UpdataActivelyOneData(){
-          this.$http.put(this.$conf.env.setActivelyDetailOneData + this.activelyId, params).then(res =>{
+        UpdataActivelyOneData(params){
+          this.$http.put(this.$conf.env.setActivelyDetailOneData + this.activelyId, params, true).then(res =>{
              this.isLoading = false
-            if(res.status == '200'){
+            if(res.status == '201'){
                 this.$message({ message: '添加成功', type: 'success'});
+            }else{
+                this.$message({ message: '添加失败', type: 'success'});              
             }
           }).catch( err =>{
              this.isLoading = false
@@ -359,7 +324,13 @@ import ActivelyOneApp from '../activelyApp/ActivelyOneApp.vue'
     }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
+  .el-icon-error{
+    font-size: 20px !important;
+  }
+  .el-message--error{
+    min-width: 1rem !important;
+  }
   .activelyOne-box{
     input[type="number"] {
       -moz-appearance: textfield;

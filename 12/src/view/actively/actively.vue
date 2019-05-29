@@ -20,8 +20,8 @@
     <el-main v-if="isAddActively">
       <div class="view-box">
         <div class="table-box">
-          <div class="manage-tit" @click="isAddActively = false">
-            <img src="../../assets/img/add.png" alt="">
+          <div class="manage-tit">
+            <img src="../../assets/img/add.png" alt=""  @click="isAddActively = false">
           </div>
             <!--表格部分-->
           <div class="manage-table">
@@ -77,8 +77,9 @@
         <el-pagination
           background
           layout="prev, pager, next"
-          :page-size=10
-          :total="activelyNumber">
+          :page-size= pageNumber
+          :total="activelyNumber"
+          @current-change='changePage'>
         </el-pagination>
       </div>
     </el-main>
@@ -110,6 +111,9 @@ import ReleaseThree from './activelyNamelist/ReleaseThree.vue';//活动三查看
         isRelease: '',//查看活动列表
         activelyClassifity: 1,//活动类别
         activelyId: -1,//活动ID
+        previousPage: '',//上一页
+        nextPage: '',//下一页
+        pageNumber : 0 ,//当前页数
       }
     },
     methods: {
@@ -143,11 +147,14 @@ import ReleaseThree from './activelyNamelist/ReleaseThree.vue';//活动三查看
       change(data){
         this.flag = data
       },
-      getActivelyList(){
-        this.$http.get(this.$conf.env.getActivelyList+1).then( res =>{
+      getActivelyList(number){
+        this.$http.get(this.$conf.env.getActivelyList + number ).then( res =>{
           this.isLoading = false
           if(res.status == '200'){
+            this.previousPage = res.data.previous
+            this.nextPage = res.data.next
             this.activelyNumber = res.data.count
+            this.pageNumber =  res.data.results.length
             res.data.results.forEach( element =>{
               element.flag = false
             })
@@ -157,10 +164,14 @@ import ReleaseThree from './activelyNamelist/ReleaseThree.vue';//活动三查看
           this.isLoading = false
           this.$message.error('网络错误');
         })
+      },
+      changePage(pageNumber){
+        this.isLoading = true
+        this.getActivelyList(pageNumber)
       }
     },
     mounted(){
-      this.getActivelyList()
+      this.getActivelyList(1)
     }
   }
 </script>
@@ -277,16 +288,5 @@ import ReleaseThree from './activelyNamelist/ReleaseThree.vue';//活动三查看
         }
       }
     }
-
-
-
-
-
-
-
-
-
-
-
   }
 </style>

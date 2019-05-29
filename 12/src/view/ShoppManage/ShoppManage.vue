@@ -20,8 +20,8 @@
     <el-main v-if="flag">
       <div class="view-box">
         <div class="table-box" >
-          <div class="manage-tit" @click="addShop()">
-            <img src="../../assets/img/add.png" alt="">
+          <div class="manage-tit" >
+            <img src="../../assets/img/add.png" alt="" @click="addShop()">
           </div>
             <!--表格部分-->
           <div class="manage-table">
@@ -70,17 +70,19 @@
         <el-pagination
           background
           layout="prev, pager, next"
-          page-size="10"
-          :total="projectNumber">
+          :page-size = Pagenumber
+          :total="projectNumber"
+          :current-page=currentPage
+           @current-change='changePage'>
         </el-pagination>
       </div>
 
     </el-main>
-   <add-project v-else @editProjectClassifity='editProjectClassifity'></add-project>
+   <add-project v-else @editProjectClassifity='editProjectClassifity' :projectID='projectID'></add-project>
 
 
-  <Bianji v-show="bianjiflag" @change="change" :classifityTitle="classifityTitle" />
-  <Bianji2 v-show="bianji2flag" @change="change2" @addProjectClassifity="addProjectClassifity"  />
+  <Bianji v-if="bianjiflag" @change="change" :classifityTitle="classifityTitle" />
+  <Bianji2 v-if="bianji2flag" @change="change2" @addProjectClassifity="addProjectClassifity"  />
   
   </div>
 </template>
@@ -94,6 +96,7 @@
     components: {
       Bianji, Bianji2, addProject
     },
+
     data() {
       return {
         flag: true,
@@ -103,12 +106,18 @@
         isLoading:true,
         classifityTitle:'',
         projectNumber: '',//商品总条数
+        projectID: -1,//商品ID
+        previousPage: '',//上一页
+        nextPage: '',//下一页
+        currentPage: 1,//当前页面
+        Pagenumber: 0 
       }
     },
     methods: {
       handleClick(row) {
         console.log(row);
-        this.bianjiflag = true;
+        this.projectID = row.id
+        this.flag = false;
       },
       del(row) {
         console.log(row);
@@ -139,11 +148,15 @@
       },
       /**@接口调用 */
       //获取商品列表
-      getProjectList(){
-        this.$http.get(this.$conf.env.getprojectList).then( res =>{
+      getProjectList(number){
+        var url = this.$conf.env.getprojectList + '?p=' + number
+        this.$http.get(number ? url : this.$conf.env.getprojectList ).then( res =>{
           this.isLoading = false
           if(res.status == '200'){
+            this.previousPage = res.data.previous
+            this.nextPage = res.data.next
             this.projectNumber = res.data.count
+            this.Pagenumber = res.data.results.length
             if(res.data.results && res.data.results.length>0){
               res.data.results.forEach(element => {
                 element.flag = false
@@ -154,10 +167,20 @@
         }).catch( err =>{
           console.log(err)
         })
+      },
+      changePage(pageNumber){
+        this.isLoading = true
+        if(pageNumber >  this.currentPage){
+          console.log('下一页')
+          this.getProjectList(pageNumber)
+        }else{
+          console.log("上一页")
+        }
+        this.currentPage = pageNumber
       }
     },
     mounted(){
-      this.getProjectList()
+      this.getProjectList(0)
       
     }
   }

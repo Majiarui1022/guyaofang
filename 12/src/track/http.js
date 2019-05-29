@@ -1,16 +1,17 @@
 import axios from 'axios';
 
 
-export default {
+export default {    
     /**
      * POST请求
      * @param {string} url 接口地址
      * @param {object} request 请求参数
      */
-    post(url, request) {
+    post(url, request, headerFlag) {
         const headers = {
             headers: {
-                'Content-Type': 'multipart/form-data',
+                // "content-type": "application/json;charset=UTF-8",
+                'Content-Type': headerFlag ? 'multipart/form-data' : "application/json;charset=UTF-8",
                 "Authorization":localStorage.getItem('jp_token') ?  'JWT ' +  localStorage.getItem('jp_token') : '',
             }
         }
@@ -47,7 +48,7 @@ export default {
     },
     /**
      * DELETE 请求
-     * @param {*} Vue
+     * @param {*} Vue 
      */
     delete(url, request) {
         const headers = {
@@ -66,10 +67,10 @@ export default {
             });
         });
     },
-    put(url, request) {
+    put(url, request, headerFlag) {
         const headers = {
             headers: {
-                "content-type": "application/json;charset=UTF-8",
+                "content-type":  headerFlag ? 'multipart/form-data' : "application/json;charset=UTF-8",
                 "Authorization":localStorage.getItem('jp_token') ?  'JWT ' +  localStorage.getItem('jp_token') : '',
             }
         }
@@ -83,7 +84,7 @@ export default {
     },
     /**
      * PUT请求
-     * @param {*} Vue
+     * @param {*} Vue 
      */
 
     install(Vue) {

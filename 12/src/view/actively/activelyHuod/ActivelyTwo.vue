@@ -83,7 +83,7 @@
                   :on-preview="handlePictureCardPreview"
                   :on-remove="handleRemove"
                   :multiple="true"
-                  :file-list='actively.activelyBanner'
+                  :file-list='activelyBannerList'
                   class="photo"
                 >
                   <i class="el-icon-plus"></i>
@@ -193,7 +193,8 @@ export default {
         activelyOldTime: '结束时间',//结束时间
       },
       isLoading: false,//加载
-      activelyPriority: [{ id: "1", name: "现货" }, { id: "2", name: "期货" }] //活动状态呢json数据
+      activelyPriority: [{ id: "1", name: "现货" }, { id: "2", name: "期货" }], //活动状态呢json数据
+      activelyBannerList:[]
     };
   },
   methods: {
@@ -201,6 +202,7 @@ export default {
     //添加主题照片
     addAttachment(params){
       console.log(params)
+      this.actively.activelyBanner = params.file
     },
 
     //添加商品照片
@@ -223,9 +225,10 @@ export default {
       reader.onload = e => {
         imgFile = e.target.result;
         let arr = imgFile.split(",");
-        let obj = {};
-        obj.url = "data:image/jpeg;base64," + arr[1];
-        obj.image = files;
+        let obj = {
+          'url': "data:image/jpeg;base64," + arr[1],
+          'image': files
+        };
         switch (flag) {
           case "1":
             this.actively.activelyBanner.push(obj);
@@ -271,21 +274,33 @@ export default {
       this.$http.get(this.$conf.env.getActivelyTwoDetail + this.activelyId).then(res =>{
         this.isLoading = false
           if(res.status == '200'){
-            if(!res.datd) return
+            if(!res.data) return
               this.actively.activelyName = res.data.name ? res.data.name : ""; //活动名称
-              this.actively.activelyPriorityId = res.datd.status ? '1' : '2'; //活动状态
+              this.actively.activelyPriorityId = res.data.status ? '1' : '2'; //活动状态
               this.actively.activelyNewTime = res.data.start_time ? res.data.start_time.split('T')[0] : ''; //活动开始时间
               this.actively.activelyOldTime = res.data.end_time ? res.data.end_time.split('T')[0] : ''; //活动结束时间
               this.actively.activelyTime = [this.actively.activelyNewTime, this.actively.activelyOldTime];//活动时间
               this.actively.activelyCity = res.data.activity ? res.data.activity : ''; //活动地址
-              this.actively.activelyNewPrice = res.data.shop_price ? res.datd.shop_price : '' ; //活动现价
+              this.actively.activelyNewPrice = res.data.shop_price ? res.data.shop_price : '' ; //活动现价
               this.actively.activelyOldPrice = res.data.old_price ? res.data.old_price : ""; //活动原价
               this.actively.activelyIntrouction = res.data.goods_desc ? res.data.goods_desc : ""; //活动介绍
               this.actively.activelyBanner = res.data.front_image ? res.data.front_image :  ''; //活动主图
-              this.actively.activelyProjectImg = res.data.good_images ? res.datd.good_images : []; //活动商品图
+              this.activelyBannerList = res.data.front_image ? [{'url': res.data.front_image}]  : []; //活动主图
+              if(res.data.good_images &&res.data.good_images.length>0){
+              res.data.good_images.forEach(element =>{
+                element.url = element.image
+              })
+              }
+              this.actively.activelyProjectImg = res.data.good_images ? res.data.good_images : []; //活动商品图
+              if(res.data.good_details &&res.data.good_details.length>0){
+              res.data.good_details.forEach(element =>{
+                element.url = element.image
+              })
               this.actively.activelyPosterImg =  res.data.good_details ? res.data.good_details : []; //活动海报
+            }
           }
       }).catch( err =>{
+        console.log(err)
         this.isLoading = false
         this.$message.error('网络错误');
       })
@@ -294,19 +309,22 @@ export default {
      /**@活动二信息 */
      submit(){
         if(!this.VerificationData()) return
-        var params = {
-              "name": this.actively.activelyName,
-              "start_time": this.actively.activelyNewTime + 'T00:00',  //开始时间
-              "end_time": this.actively.activelyOldTime + 'T00:00',   //结束时间
-              "activity": this.actively.activelyCity,
-              "status": this.actively.activelyPriorityId == '1' ? true : false,
-              "shop_price": this.actively.activelyNewPrice,
-              "old_price": this.actively.activelyOldPrice,
-              "goods_desc": this.actively.activelyIntrouction,
-              "front_image": this.actively.activelyBanner,
-              "good_images": this.actively.activelyProjectImg,  //商品图
-              "good_details": this.actively.activelyPosterImg   //商品详情图
-        }
+        var params = new FormData()
+         this.actively.activelyProjectImg.forEach(element =>{
+           params.append('good_images', element.image);
+         })
+        this.actively.activelyPosterImg.forEach(element =>{
+           params.append('good_details', element.image);
+         })
+        params.append("name", this.actively.activelyName)
+        params.append("start_time", this.actively.activelyNewTime + 'T00:00')//开始时间
+        params.append("end_time", this.actively.activelyOldTime + 'T00:00') //结束时间
+        params.append("activity", this.actively.activelyCity)
+        params.append( "status", this.actively.activelyPriorityId == '1' ? true : false)
+        params.append("shop_price", this.actively.activelyNewPrice)
+        params.append("old_price", this.actively.activelyOldPrice)
+        params.append("goods_desc", this.actively.activelyIntrouction)
+        params.append("front_image", this.actively.activelyBanner)
         this.isLoading = true
         this.activelyId == -1 ? this.AddtoActivelyTwoData(params) : this.UpdataActivelyTwoData(params)
      },
@@ -327,7 +345,7 @@ export default {
         this.actively.activelyProjectImg.length == 0 || //活动商品图
         this.actively.activelyPosterImg.length == 0//活动海报
        ){
-         console.log()
+         console.log(this.actively)
           this.$message({ message: '请完善您的信息', type: 'warning'});
           return false
        }else{
@@ -339,7 +357,7 @@ export default {
      AddtoActivelyTwoData(params){
         this.$http.post(this.$conf.env.setActivelyDetailTwoData, params).then( res =>{
             this.isLoading = false
-            if(res.status == '200'){
+            if(res.status == '201'){
               this.$message({  message: '添加成功', type: 'success'});
             }
           }).catch( err =>{
@@ -352,8 +370,8 @@ export default {
      UpdataActivelyTwoData(params){
        this.$http.put(this.$conf.env.setActivelyDetailTwoData + this.activelyId, params).then(res =>{
              this.isLoading = false
-            if(res.status == '200'){
-                this.$message({ message: '添加成功', type: 'success'});
+            if(res.status == '201'){
+                this.$message({ message: '修改成功', type: 'success'});
             }
           }).catch( err =>{
              this.isLoading = false
@@ -376,7 +394,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .Actively {
     input[type="number"] {
       -moz-appearance: textfield;

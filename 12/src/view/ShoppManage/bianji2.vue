@@ -15,6 +15,7 @@
                     <!--表格部分-->
                 <div class="manage-table">
                     <el-table
+                    v-loading ='isLoading'
                     :data="projectCategory"
                     @cell-mouse-enter="show"
                     @cell-mouse-leave="leave"
@@ -46,8 +47,8 @@
                         prop=""
                         label="操作">
                         <template slot-scope="scope">
-                        <el-button @click="handleClick(scope.row)" type="text" size="small" ><img src="../../assets/img/bianji.png" alt="" srcset=""></el-button>
-                        <el-button @click="del(scope.row)" type="text" size="small" ><img src="../../assets/img/del.png" alt="" srcset=""></el-button>
+                        <el-button @click="handleClick(scope.row)" type="text" size="small"  v-show="scope.row.flag" ><img src="../../assets/img/bianji.png" alt="" srcset=""></el-button>
+                        <el-button @click="del(scope.row)" type="text" size="small"  v-show="scope.row.flag"><img src="../../assets/img/del.png" alt="" srcset=""></el-button>
                         </template>
                     </el-table-column>
                     </el-table>
@@ -64,22 +65,15 @@ export default {
     data(){
       return{
         flag: true,
-        tableData: [{
-          date: '茶具',
-          flag: false,
-        }, {
-          date: '茶叶',
-          flag: false,
-        }, {
-          date: '礼包',
-          flag: false,
-        }],
+        tableData: [],
         classifityTitle: '',
-        projectCategory:[]
+        projectCategory:[],
+        isLoading: true
       }
     },
     mounted(){
         this.getprojectCategory()
+        this.$bus.$on('getprojectCategoryclose', this.getprojectCategory)
     },
     methods: {
        handleClick(row) {
@@ -90,9 +84,19 @@ export default {
       },
       del(row) {
         console.log(row);
+        this.isLoading = true
         this.$http.delete( this.$conf.env.deleteProjectCategory + row.id).then(res =>{
-            console.log(res)
-            this.getprojectCategory()
+            if(res.status == '204'){
+                this.$message({  message: '删除成功', type: 'success'}); 
+                this.getprojectCategory()
+            }else{
+                this.isLoading = false
+                this.$message.error('删除失败');
+            }
+            
+        }).catch( err =>{
+             this.isLoading = false
+            this.$message.error('网络错误');
         })
       },
       close(){
@@ -109,10 +113,11 @@ export default {
       },
       addProjectClassifity(){
           this.$emit('addProjectClassifity','添加分类')
-        //   this.$bus.$emit('classifityTitle', '添加分类')
       },
        getprojectCategory(){
+           this.isLoading  = true
           this.$http.get(this.$conf.env.getprojectCategory).then( res =>{
+              this.isLoading = false
             if(res.status == '200'){
               if(res.data && res.data.length > 0){
                     res.data.forEach( element =>{
@@ -122,9 +127,11 @@ export default {
               }
             }
           }).catch( err =>{
+              this.isLoading = false
             console.log(err)
           })
         },
+        
     },
 }
 </script>
@@ -135,6 +142,9 @@ export default {
         height: 100%;
         left: -10rem;
         z-index: 12;
+        ::-webkit-scrollbar {
+            display: none;
+        }
         .box{
             width: 100%;
             height: 100%;
@@ -177,6 +187,8 @@ export default {
             height:100%;
             padding:.24rem .32rem .53rem .32rem;
             box-sizing: border-box;
+            height: 100%;
+            overflow-y: scroll;
             .table-box{
                 width: 100%;
                 height:100%;
@@ -209,8 +221,13 @@ export default {
             }
             }
         }
+        .bigbox .model .view-box .table-box .manage-table{
+            height:6.1rem !important;
+        }
+        .el-main{
+            height: 7.61rem;
+            overflow: hidden
+        }
     }
-    .bigbox .model .view-box .table-box .manage-table{
-        height:6.1rem !important;
-      }
+    
 </style>
